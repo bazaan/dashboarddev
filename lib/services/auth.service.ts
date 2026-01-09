@@ -3,25 +3,33 @@ import { verifyPassword, signAccessToken, signRefreshToken, verifyRefreshToken }
 
 export const AuthService = {
     async login(email: string, password: string) {
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user) {
-            throw new Error('Invalid credentials');
+        try {
+            const user = await prisma.user.findUnique({ where: { email } });
+            if (!user) {
+                throw new Error('Credenciales inválidas');
+            }
+
+            const isValid = await verifyPassword(password, user.passwordHash);
+            if (!isValid) {
+                throw new Error('Credenciales inválidas');
+            }
+
+            const accessToken = await signAccessToken({
+                userId: user.id,
+                role: user.role,
+                email: user.email,
+            });
+
+            const refreshToken = await signRefreshToken({ userId: user.id });
+
+            return { user, accessToken, refreshToken };
+        } catch (error: unknown) {
+            // Si es un error de Prisma (base de datos), lanzar un error más descriptivo
+            if (error instanceof Error && (error.message.includes('Prisma') || error.message.includes('database'))) {
+                throw new Error('Error de conexión a la base de datos');
+            }
+            throw error;
         }
-
-        const isValid = await verifyPassword(password, user.passwordHash);
-        if (!isValid) {
-            throw new Error('Invalid credentials');
-        }
-
-        const accessToken = await signAccessToken({
-            userId: user.id,
-            role: user.role,
-            email: user.email,
-        });
-
-        const refreshToken = await signRefreshToken({ userId: user.id });
-
-        return { user, accessToken, refreshToken };
     },
 
     async refresh(token: string) {

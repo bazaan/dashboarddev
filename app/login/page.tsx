@@ -27,17 +27,25 @@ export default function LoginPage() {
                 headers: { 'Content-Type': 'application/json' },
             });
 
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Login failed');
+            // Intentar parsear la respuesta
+            let data;
+            try {
+                data = await res.json();
+            } catch (parseError) {
+                throw new Error(`Error del servidor (${res.status}): ${res.statusText}`);
             }
 
-            // Successful login
+            if (!res.ok) {
+                throw new Error(data.error || `Error ${res.status}: ${res.statusText}`);
+            }
+
+            // Successful login - esperar un momento antes de redirigir
+            await new Promise(resolve => setTimeout(resolve, 100));
             router.push('/dashboard');
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Login failed';
+            console.error('Login error:', err);
+            const message = err instanceof Error ? err.message : 'Error al iniciar sesión. Verifica tus credenciales.';
             setError(message);
-        } finally {
             setLoading(false);
         }
     }
