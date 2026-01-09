@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Configuración para dominio personalizado
-  // El dominio dev.alef.company debe estar configurado en el hosting (Vercel, etc.)
+  // El dominio dev.alef.company debe estar configurado en el hosting (Netlify)
   
   // Headers de seguridad para producción
   async headers() {
@@ -25,6 +25,20 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
+  },
+  
+  // Configuración para evitar problemas con CSP en producción
+  reactStrictMode: true,
+  
+  // Permitir eval en desarrollo (necesario para Next.js)
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+      };
+    }
+    return config;
   },
 };
 

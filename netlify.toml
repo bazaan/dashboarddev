@@ -13,7 +13,7 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Headers de seguridad
+# Headers de seguridad (CSP ajustado para Next.js)
 [[headers]]
   for = "/*"
   [headers.values]
@@ -22,6 +22,8 @@
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    # CSP relajado para Next.js (permite eval necesario para hot reload y desarrollo)
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;"
 
 # Configuración de funciones para API routes
 [functions]

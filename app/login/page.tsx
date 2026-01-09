@@ -69,14 +69,29 @@ export default function LoginPage() {
                         <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="email">
                             Email
                         </label>
-                        <Input id="email" name="email" type="email" placeholder="admin@alef.com" required disabled={loading} />
+                        <Input 
+                            id="email" 
+                            name="email" 
+                            type="email" 
+                            placeholder="admin@alef.com" 
+                            autoComplete="email"
+                            required 
+                            disabled={loading} 
+                        />
                     </div>
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="password">
                             Password
                         </label>
-                        <Input id="password" name="password" type="password" required disabled={loading} />
+                        <Input 
+                            id="password" 
+                            name="password" 
+                            type="password" 
+                            autoComplete="current-password"
+                            required 
+                            disabled={loading} 
+                        />
                     </div>
 
                     <Button type="submit" className="w-full" disabled={loading}>
