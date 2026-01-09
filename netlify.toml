@@ -1,0 +1,40 @@
+# Configuración de Netlify para Next.js
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--legacy-peer-deps"
+
+# Plugin oficial de Netlify para Next.js
+# Netlify instalará automáticamente este plugin
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Headers de seguridad
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Configuración de funciones para API routes
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["prisma/**/*"]
+
+# Nota: El plugin @netlify/plugin-nextjs maneja automáticamente
+# las redirecciones y el routing de Next.js
+# No necesitas configurar redirects manualmente
+
+# Variables de entorno (configúralas en el dashboard de Netlify):
+# - DATABASE_URL
+# - DIRECT_URL  
+# - JWT_SECRET
+# - JWT_REFRESH_SECRET
+# - NODE_ENV=production
