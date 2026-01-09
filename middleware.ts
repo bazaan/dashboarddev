@@ -6,14 +6,16 @@ export async function middleware(request: NextRequest) {
     const path = request.nextUrl.pathname;
     const hostname = request.headers.get('host') || '';
 
-    // Permitir el dominio personalizado dev.alef.company y localhost para desarrollo
-    // Solo validar hostname en producción
-    if (process.env.NODE_ENV === 'production') {
-        const allowedHosts = ['dev.alef.company'];
+    // Permitir dominios de Netlify, dominio personalizado y localhost
+    // Solo validar hostname en producción si se especifica un dominio personalizado
+    if (process.env.NODE_ENV === 'production' && process.env.ALLOWED_HOST) {
+        const allowedHosts = [process.env.ALLOWED_HOST];
         const isValidHost = allowedHosts.some(host => hostname.includes(host));
         
-        // Permitir localhost solo en desarrollo
-        if (!isValidHost && !hostname.includes('localhost')) {
+        // Permitir dominios de Netlify siempre
+        const isNetlifyDomain = hostname.includes('.netlify.app') || hostname.includes('netlify');
+        
+        if (!isValidHost && !isNetlifyDomain && !hostname.includes('localhost')) {
             return new NextResponse('Invalid hostname', { status: 403 });
         }
     }
