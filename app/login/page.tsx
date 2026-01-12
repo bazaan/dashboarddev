@@ -67,7 +67,7 @@ export default function LoginPage() {
                 throw new Error(data.error || `Error ${res.status}: ${res.statusText || 'Error desconocido'}`);
             }
 
-            console.log('[LOGIN] Login exitoso, redirigiendo...');
+            console.log('[LOGIN] Login exitoso, verificando cookies...');
             
             // Las cookies httpOnly no son accesibles desde JavaScript por seguridad
             // Verificar headers de respuesta para debugging
@@ -77,20 +77,37 @@ export default function LoginPage() {
                 console.log('[LOGIN] Set-Cookie contenido:', setCookieHeader.substring(0, 300));
             }
             
-            // CRÍTICO: Esperar suficiente tiempo para que el navegador procese las cookies
-            // Las cookies httpOnly se establecen automáticamente por el navegador
-            // pero puede tomar tiempo, especialmente en Netlify
-            console.log('[LOGIN] Esperando 1 segundo para que las cookies se establezcan...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // CRÍTICO: Hacer una petición de verificación para asegurar que las cookies estén establecidas
+            // antes de redirigir. Esto fuerza al navegador a procesar las cookies.
+            console.log('[LOGIN] Verificando que las cookies estén establecidas...');
+            try {
+                const verifyRes = await fetch('/api/auth/verify', {
+                    method: 'GET',
+                    credentials: 'include',
+                });
+                
+                if (verifyRes.ok) {
+                    const verifyData = await verifyRes.json();
+                    console.log('[LOGIN] Verificación exitosa:', verifyData);
+                    if (verifyData.authenticated) {
+                        console.log('[LOGIN] Cookies confirmadas, redirigiendo...');
+                        // Esperar un momento adicional para asegurar
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                        window.location.href = '/dashboard';
+                        return;
+                    }
+                }
+                console.warn('[LOGIN] Verificación falló, pero redirigiendo de todas formas...');
+            } catch (verifyError) {
+                console.warn('[LOGIN] Error en verificación, pero redirigiendo de todas formas:', verifyError);
+            }
             
-            // Verificar cookies después de esperar (solo para debugging, httpOnly no será visible)
-            console.log('[LOGIN] Todas las cookies del documento:', document.cookie);
+            // Si la verificación falla, esperar y redirigir de todas formas
+            console.log('[LOGIN] Esperando 1.5 segundos antes de redirigir...');
+            await new Promise(resolve => setTimeout(resolve, 1500));
             
             // Usar window.location.href para forzar recarga completa y aplicar cookies
-            // Esto asegura que el middleware pueda leer las cookies en la siguiente petición
             console.log('[LOGIN] Redirigiendo a /dashboard...');
-            
-            // Intentar redirección con un pequeño delay adicional para asegurar cookies
             window.location.href = '/dashboard';
         } catch (err: unknown) {
             console.error('[LOGIN] Error completo:', err);
