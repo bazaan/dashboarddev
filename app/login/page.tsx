@@ -21,31 +21,68 @@ export default function LoginPage() {
         const password = formData.get('password');
 
         try {
-            const res = await fetch('/api/auth/login', {
-                method: 'POST',
-                body: JSON.stringify({ email, password }),
-                headers: { 'Content-Type': 'application/json' },
-            });
+            console.log('[LOGIN] Iniciando login para:', email);
+            
+            // Crear un AbortController para timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos timeout
+
+            let res;
+            try {
+                res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password }),
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal,
+                    credentials: 'include', // Importante para cookies
+                });
+                clearTimeout(timeoutId);
+            } catch (fetchError: unknown) {
+                clearTimeout(timeoutId);
+                console.error('[LOGIN] Error en fetch:', fetchError);
+                if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+                    throw new Error('La solicitud tardó demasiado. Verifica tu conexión o la configuración del servidor.');
+                }
+                throw new Error('Error de conexión. Verifica que el servidor esté funcionando.');
+            }
+
+            console.log('[LOGIN] Respuesta recibida, status:', res.status);
 
             // Intentar parsear la respuesta
             let data;
             try {
-                data = await res.json();
+                const text = await res.text();
+                console.log('[LOGIN] Respuesta texto:', text.substring(0, 200));
+                if (!text) {
+                    throw new Error('Respuesta vacía del servidor');
+                }
+                data = JSON.parse(text);
             } catch (parseError) {
-                throw new Error(`Error del servidor (${res.status}): ${res.statusText}`);
+                console.error('[LOGIN] Error parsing response:', parseError);
+                throw new Error(`Error del servidor (${res.status}): ${res.statusText || 'Sin respuesta'}`);
             }
 
             if (!res.ok) {
-                throw new Error(data.error || `Error ${res.status}: ${res.statusText}`);
+                console.error('[LOGIN] Error en respuesta:', data);
+                throw new Error(data.error || `Error ${res.status}: ${res.statusText || 'Error desconocido'}`);
             }
+
+            console.log('[LOGIN] Login exitoso, redirigiendo...');
+            
+            // Verificar que las cookies se establecieron
+            const cookiesSet = document.cookie.includes('accessToken') || res.headers.get('set-cookie');
+            console.log('[LOGIN] Cookies establecidas:', cookiesSet);
 
             // Successful login - esperar un momento antes de redirigir
             await new Promise(resolve => setTimeout(resolve, 100));
-            router.push('/dashboard');
+            
+            // Usar window.location para asegurar que la redirección funcione
+            window.location.href = '/dashboard';
         } catch (err: unknown) {
-            console.error('Login error:', err);
-            const message = err instanceof Error ? err.message : 'Error al iniciar sesión. Verifica tus credenciales.';
+            console.error('[LOGIN] Error completo:', err);
+            const message = err instanceof Error ? err.message : 'Error al iniciar sesión. Verifica tus credenciales y la conexión.';
             setError(message);
+        } finally {
             setLoading(false);
         }
     }

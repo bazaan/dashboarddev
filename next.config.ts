@@ -40,6 +40,12 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
+  
+  // Configuración de Turbopack (Next.js 16+)
+  turbopack: {
+    // Turbopack maneja los fallbacks automáticamente
+    // Si necesitas configuración específica, agrégala aquí
+  },
 };
 
 export default nextConfig;

@@ -16,36 +16,65 @@ export async function middleware(request: NextRequest) {
         const isNetlifyDomain = hostname.includes('.netlify.app') || hostname.includes('netlify');
         
         if (!isValidHost && !isNetlifyDomain && !hostname.includes('localhost')) {
+            console.log('[MIDDLEWARE] Hostname no permitido:', hostname);
             return new NextResponse('Invalid hostname', { status: 403 });
         }
     }
 
-    // Public paths
-    if (path === '/login' || path.startsWith('/api/auth')) {
+    // Public paths - permitir acceso sin autenticación
+    if (path === '/login' || path.startsWith('/api/auth') || path.startsWith('/api/test')) {
         return NextResponse.next();
     }
 
+    // Verificar token de acceso
     const accessToken = request.cookies.get('accessToken')?.value;
 
     if (!accessToken) {
-        return NextResponse.redirect(new URL('/login', request.url));
-    }
-
-    const payload = await verifyAccessToken(accessToken);
-
-    if (!payload) {
-        // Token invalid -> Redirect to login (Client should try refresh via API)
-        return NextResponse.redirect(new URL('/login', request.url));
-    }
-
-    // Admin protection
-    if (path.startsWith('/admin')) {
-        if (payload.role !== 'ADMIN') {
-            return NextResponse.redirect(new URL('/dashboard', request.url));
+        console.log('[MIDDLEWARE] No access token encontrado, redirigiendo a login');
+        // Solo redirigir si no es una petición de API
+        if (path.startsWith('/api/')) {
+            return NextResponse.json(
+                { error: 'No autorizado' },
+                { status: 401 }
+            );
         }
+        return NextResponse.redirect(new URL('/login', request.url));
     }
 
-    return NextResponse.next();
+    try {
+        const payload = await verifyAccessToken(accessToken);
+
+        if (!payload) {
+            console.log('[MIDDLEWARE] Token inválido, redirigiendo a login');
+            // Solo redirigir si no es una petición de API
+            if (path.startsWith('/api/')) {
+                return NextResponse.json(
+                    { error: 'Token inválido' },
+                    { status: 401 }
+                );
+            }
+            return NextResponse.redirect(new URL('/login', request.url));
+        }
+
+        // Admin protection
+        if (path.startsWith('/admin')) {
+            if (payload.role !== 'ADMIN') {
+                console.log('[MIDDLEWARE] Usuario no admin intentando acceder a admin');
+                return NextResponse.redirect(new URL('/dashboard', request.url));
+            }
+        }
+
+        return NextResponse.next();
+    } catch (error) {
+        console.error('[MIDDLEWARE] Error verificando token:', error);
+        if (path.startsWith('/api/')) {
+            return NextResponse.json(
+                { error: 'Error de autenticación' },
+                { status: 401 }
+            );
+        }
+        return NextResponse.redirect(new URL('/login', request.url));
+    }
 }
 
 export const config = {
