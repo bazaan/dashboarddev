@@ -29,6 +29,7 @@ export default function LoginPage() {
 
             let res;
             try {
+                console.log('[LOGIN] Haciendo petición a /api/auth/login...');
                 res = await fetch('/api/auth/login', {
                     method: 'POST',
                     body: JSON.stringify({ email, password }),
@@ -37,6 +38,7 @@ export default function LoginPage() {
                     credentials: 'include', // Importante para cookies
                 });
                 clearTimeout(timeoutId);
+                console.log('[LOGIN] Respuesta recibida, status:', res.status, 'ok:', res.ok);
             } catch (fetchError: unknown) {
                 clearTimeout(timeoutId);
                 console.error('[LOGIN] Error en fetch:', fetchError);
@@ -80,35 +82,54 @@ export default function LoginPage() {
             // CRÍTICO: Hacer una petición de verificación para asegurar que las cookies estén establecidas
             // antes de redirigir. Esto fuerza al navegador a procesar las cookies.
             console.log('[LOGIN] Verificando que las cookies estén establecidas...');
+            let cookiesVerified = false;
+            
             try {
+                // Esperar un momento para que el navegador procese las cookies
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
                 const verifyRes = await fetch('/api/auth/verify', {
                     method: 'GET',
                     credentials: 'include',
                 });
                 
+                console.log('[LOGIN] Verificación respuesta status:', verifyRes.status);
+                
                 if (verifyRes.ok) {
                     const verifyData = await verifyRes.json();
                     console.log('[LOGIN] Verificación exitosa:', verifyData);
                     if (verifyData.authenticated) {
+                        cookiesVerified = true;
                         console.log('[LOGIN] Cookies confirmadas, redirigiendo...');
-                        // Esperar un momento adicional para asegurar
-                        await new Promise(resolve => setTimeout(resolve, 300));
-                        window.location.href = '/dashboard';
-                        return;
+                    } else {
+                        console.warn('[LOGIN] Verificación OK pero no autenticado:', verifyData);
                     }
+                } else {
+                    const errorText = await verifyRes.text();
+                    console.warn('[LOGIN] Verificación falló con status:', verifyRes.status, 'error:', errorText);
                 }
-                console.warn('[LOGIN] Verificación falló, pero redirigiendo de todas formas...');
             } catch (verifyError) {
-                console.warn('[LOGIN] Error en verificación, pero redirigiendo de todas formas:', verifyError);
+                console.error('[LOGIN] Error en verificación:', verifyError);
             }
             
-            // Si la verificación falla, esperar y redirigir de todas formas
-            console.log('[LOGIN] Esperando 1.5 segundos antes de redirigir...');
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            
-            // Usar window.location.href para forzar recarga completa y aplicar cookies
-            console.log('[LOGIN] Redirigiendo a /dashboard...');
-            window.location.href = '/dashboard';
+            // Si las cookies están verificadas, redirigir inmediatamente
+            if (cookiesVerified) {
+                console.log('[LOGIN] Redirigiendo con router.push...');
+                router.push('/dashboard');
+                // También usar window.location como respaldo después de un delay
+                setTimeout(() => {
+                    if (window.location.pathname === '/login') {
+                        console.log('[LOGIN] Router.push no funcionó, usando window.location...');
+                        window.location.href = '/dashboard';
+                    }
+                }, 1000);
+            } else {
+                // Si no se verificaron, esperar más y usar window.location
+                console.log('[LOGIN] Cookies no verificadas, esperando 2 segundos antes de redirigir...');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                console.log('[LOGIN] Redirigiendo a /dashboard con window.location...');
+                window.location.href = '/dashboard';
+            }
         } catch (err: unknown) {
             console.error('[LOGIN] Error completo:', err);
             const message = err instanceof Error ? err.message : 'Error al iniciar sesión. Verifica tus credenciales y la conexión.';
