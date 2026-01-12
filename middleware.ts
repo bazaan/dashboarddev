@@ -22,73 +22,19 @@ export async function middleware(request: NextRequest) {
     }
 
     // Public paths - permitir acceso sin autenticación
-    if (path === '/login' || path.startsWith('/api/auth') || path.startsWith('/api/test')) {
+    // AUTENTICACIÓN DESHABILITADA: Permitir acceso a todas las rutas sin login
+    if (path === '/login' || path.startsWith('/api/auth') || path.startsWith('/api/test') || path.startsWith('/dashboard') || path === '/') {
         return NextResponse.next();
     }
 
-    // Verificar token de acceso
-    const accessToken = request.cookies.get('accessToken')?.value;
-    const refreshToken = request.cookies.get('refreshToken')?.value;
-    const allCookies = request.cookies.getAll();
-    
-    console.log('[MIDDLEWARE] Path:', path);
-    console.log('[MIDDLEWARE] Cookies disponibles:', allCookies.map(c => c.name).join(', '));
-    console.log('[MIDDLEWARE] AccessToken presente:', !!accessToken);
-    console.log('[MIDDLEWARE] RefreshToken presente:', !!refreshToken);
-    console.log('[MIDDLEWARE] Todas las cookies:', JSON.stringify(allCookies.map(c => ({ name: c.name, hasValue: !!c.value }))));
-
-    if (!accessToken) {
-        console.log('[MIDDLEWARE] No access token encontrado');
-        
-        // Si hay refreshToken pero no accessToken, intentar refrescar
-        if (refreshToken) {
-            console.log('[MIDDLEWARE] RefreshToken presente, pero accessToken no. Esto puede ser un problema de timing.');
-        }
-        
-        // Solo redirigir si no es una petición de API
-        if (path.startsWith('/api/')) {
-            return NextResponse.json(
-                { error: 'No autorizado' },
-                { status: 401 }
-            );
-        }
-        return NextResponse.redirect(new URL('/login', request.url));
-    }
-
-    try {
-        const payload = await verifyAccessToken(accessToken);
-
-        if (!payload) {
-            console.log('[MIDDLEWARE] Token inválido, redirigiendo a login');
-            // Solo redirigir si no es una petición de API
-            if (path.startsWith('/api/')) {
-                return NextResponse.json(
-                    { error: 'Token inválido' },
-                    { status: 401 }
-                );
-            }
-            return NextResponse.redirect(new URL('/login', request.url));
-        }
-
-        // Admin protection
-        if (path.startsWith('/admin')) {
-            if (payload.role !== 'ADMIN') {
-                console.log('[MIDDLEWARE] Usuario no admin intentando acceder a admin');
-                return NextResponse.redirect(new URL('/dashboard', request.url));
-            }
-        }
-
+    // Para APIs, permitir acceso sin autenticación (opcional: puedes mantener la verificación si lo necesitas)
+    if (path.startsWith('/api/')) {
+        // Permitir acceso sin autenticación a todas las APIs
         return NextResponse.next();
-    } catch (error) {
-        console.error('[MIDDLEWARE] Error verificando token:', error);
-        if (path.startsWith('/api/')) {
-            return NextResponse.json(
-                { error: 'Error de autenticación' },
-                { status: 401 }
-            );
-        }
-        return NextResponse.redirect(new URL('/login', request.url));
     }
+
+    // Permitir acceso a todas las demás rutas
+    return NextResponse.next();
 }
 
 export const config = {
