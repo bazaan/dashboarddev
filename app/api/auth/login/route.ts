@@ -37,7 +37,12 @@ export async function POST(req: Request) {
 
         // Detectar si estamos en producción (Netlify siempre usa HTTPS)
         const isProduction = process.env.NODE_ENV === 'production' || process.env.NETLIFY === 'true';
+        
+        // Obtener el origen de la petición para configurar cookies correctamente
+        const origin = req.headers.get('origin') || req.headers.get('referer') || '';
+        const isSecure = isProduction || origin.startsWith('https://');
 
+        // Crear respuesta JSON
         const response = NextResponse.json({
             user: {
                 id: user.id,
@@ -45,25 +50,33 @@ export async function POST(req: Request) {
                 role: user.role,
                 name: user.name,
             },
-        }, { status: 200 });
+        }, { 
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
 
-        // Configurar cookies en la respuesta
+        // Configurar cookies en la respuesta - IMPORTANTE: establecer antes de enviar
         response.cookies.set('accessToken', accessToken, {
             httpOnly: true,
-            secure: isProduction,
-            sameSite: 'lax',
+            secure: isSecure, // true en producción (HTTPS)
+            sameSite: 'lax', // Permite cookies en navegación cross-site
             maxAge: 15 * 60, // 15 mins
             path: '/',
+            // No especificar domain para que use el dominio actual automáticamente
         });
 
         response.cookies.set('refreshToken', refreshToken, {
             httpOnly: true,
-            secure: isProduction,
+            secure: isSecure, // true en producción (HTTPS)
             sameSite: 'lax',
             maxAge: 7 * 24 * 60 * 60, // 7 days
             path: '/',
+            // No especificar domain para que use el dominio actual automáticamente
         });
 
+        console.log('[LOGIN API] Cookies configuradas - secure:', isSecure, 'production:', isProduction);
         console.log('[LOGIN API] Respuesta enviada con cookies configuradas');
         return response;
     } catch (error: unknown) {

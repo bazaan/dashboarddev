@@ -28,6 +28,11 @@ export async function middleware(request: NextRequest) {
 
     // Verificar token de acceso
     const accessToken = request.cookies.get('accessToken')?.value;
+    const allCookies = request.cookies.getAll();
+    
+    console.log('[MIDDLEWARE] Path:', path);
+    console.log('[MIDDLEWARE] Cookies disponibles:', allCookies.map(c => c.name).join(', '));
+    console.log('[MIDDLEWARE] AccessToken presente:', !!accessToken);
 
     if (!accessToken) {
         console.log('[MIDDLEWARE] No access token encontrado, redirigiendo a login');

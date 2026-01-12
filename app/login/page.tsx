@@ -69,14 +69,18 @@ export default function LoginPage() {
 
             console.log('[LOGIN] Login exitoso, redirigiendo...');
             
-            // Verificar que las cookies se establecieron
-            const cookiesSet = document.cookie.includes('accessToken') || res.headers.get('set-cookie');
-            console.log('[LOGIN] Cookies establecidas:', cookiesSet);
-
-            // Successful login - esperar un momento antes de redirigir
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Las cookies httpOnly no son accesibles desde JavaScript por seguridad
+            // Verificar headers de respuesta para debugging
+            const setCookieHeader = res.headers.get('set-cookie');
+            console.log('[LOGIN] Set-Cookie header:', setCookieHeader ? 'Presente' : 'No presente');
             
-            // Usar window.location para asegurar que la redirección funcione
+            // Esperar más tiempo para asegurar que las cookies se establezcan en el navegador
+            // Las cookies httpOnly se establecen automáticamente por el navegador
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Usar window.location.href para forzar recarga completa y aplicar cookies
+            // Esto asegura que el middleware pueda leer las cookies en la siguiente petición
+            console.log('[LOGIN] Redirigiendo a /dashboard...');
             window.location.href = '/dashboard';
         } catch (err: unknown) {
             console.error('[LOGIN] Error completo:', err);
