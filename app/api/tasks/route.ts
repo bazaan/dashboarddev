@@ -27,9 +27,7 @@ async function getAuth(req: Request) {
 
 export async function GET(req: Request) {
     try {
-        const user = await getAuth(req);
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+        // Autenticación deshabilitada - obtener todas las tareas
         const { searchParams } = new URL(req.url);
         const type = searchParams.get('type'); // 'daily' or 'weekly'
         const date = searchParams.get('date');
@@ -40,14 +38,14 @@ export async function GET(req: Request) {
             tasks = await TaskService.getDailyTasks(date ? new Date(date) : undefined);
         } else if (type === 'weekly') {
             tasks = await TaskService.getWeeklyTasks(date ? new Date(date) : undefined);
-        } else if (user.role === 'ADMIN') {
-            tasks = await TaskService.getAll();
         } else {
-            tasks = await TaskService.getMyTasks(user.userId as string);
+            // Obtener todas las tareas sin filtro de usuario
+            tasks = await TaskService.getAll();
         }
 
         return NextResponse.json(tasks);
     } catch (error: unknown) {
+        console.error('[API TASKS] Error:', error);
         const message = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json({ error: message }, { status: 500 });
     }
@@ -55,16 +53,22 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
-        const user = await getAuth(req);
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+        // Autenticación deshabilitada - usar un usuario por defecto
         const body = await req.json();
         const data = createTaskSchema.parse(body);
 
-        const task = await TaskService.create(data, user.userId as string, user.role as string);
+        // Obtener el primer usuario de la base de datos como owner por defecto
+        const { prisma } = await import('@/lib/prisma');
+        const defaultUser = await prisma.user.findFirst();
+        
+        if (!defaultUser) {
+            return NextResponse.json({ error: 'No users found in database' }, { status: 500 });
+        }
+
+        const task = await TaskService.create(data, defaultUser.id, defaultUser.role);
 
         await AuditService.log(
-            user.userId as string,
+            defaultUser.id,
             AuditAction.CREATE,
             'TASK',
             task.id,
@@ -73,6 +77,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json(task);
     } catch (error: unknown) {
+        console.error('[API TASKS POST] Error:', error);
         const message = error instanceof Error ? error.message : 'Failed to create task';
         return NextResponse.json({ error: message }, { status: 500 });
     }

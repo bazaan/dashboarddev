@@ -27,12 +27,11 @@ async function getAuth(req: Request) {
 
 export async function GET(req: Request) {
     try {
-        const user = await getAuth(req);
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+        // Autenticación deshabilitada - obtener todos los proyectos
         const projects = await ProjectService.getAll();
         return NextResponse.json(projects);
     } catch (error: unknown) {
+        console.error('[API PROJECTS] Error:', error);
         const message = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json({ error: message }, { status: 500 });
     }
@@ -40,11 +39,17 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
-        const user = await getAuth(req);
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+        // Autenticación deshabilitada - usar un usuario por defecto
         const body = await req.json();
         const data = createProjectSchema.parse(body);
+
+        // Obtener el primer usuario de la base de datos como owner por defecto
+        const { prisma } = await import('@/lib/prisma');
+        const defaultUser = await prisma.user.findFirst();
+        
+        if (!defaultUser) {
+            return NextResponse.json({ error: 'No users found in database' }, { status: 500 });
+        }
 
         const project = await ProjectService.create(
             {
@@ -53,12 +58,12 @@ export async function POST(req: Request) {
                 driveN8nFlowUrl: data.driveN8nFlowUrl || undefined,
                 driveDashboardUrl: data.driveDashboardUrl || undefined,
             },
-            user.userId as string,
-            user.role as string
+            defaultUser.id,
+            defaultUser.role
         );
 
         await AuditService.log(
-            user.userId as string,
+            defaultUser.id,
             AuditAction.CREATE,
             'PROJECT',
             project.id,
@@ -67,6 +72,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json(project);
     } catch (error: unknown) {
+        console.error('[API PROJECTS POST] Error:', error);
         const message = error instanceof Error ? error.message : 'Failed to create project';
         return NextResponse.json({ error: message }, { status: 500 });
     }

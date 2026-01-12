@@ -25,9 +25,7 @@ async function getAuth(req: Request) {
 
 export async function GET(req: Request) {
     try {
-        const user = await getAuth(req);
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+        // Autenticación deshabilitada - obtener todos los eventos
         const { searchParams } = new URL(req.url);
         const type = searchParams.get('type') as EventType | null;
         const projectId = searchParams.get('projectId');
@@ -48,6 +46,7 @@ export async function GET(req: Request) {
 
         return NextResponse.json(events);
     } catch (error: unknown) {
+        console.error('[API EVENTS] Error:', error);
         const message = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json({ error: message }, { status: 500 });
     }
@@ -55,11 +54,17 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
-        const user = await getAuth(req);
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+        // Autenticación deshabilitada - usar un usuario por defecto
         const body = await req.json();
         const data = createEventSchema.parse(body);
+
+        // Obtener el primer usuario de la base de datos como owner por defecto
+        const { prisma } = await import('@/lib/prisma');
+        const defaultUser = await prisma.user.findFirst();
+        
+        if (!defaultUser) {
+            return NextResponse.json({ error: 'No users found in database' }, { status: 500 });
+        }
 
         const event = await EventService.create(
             {
@@ -67,12 +72,12 @@ export async function POST(req: Request) {
                 type: data.type as EventType,
                 projectId: data.projectId && data.projectId !== '' ? data.projectId : undefined,
             },
-            user.userId as string,
-            user.role as string
+            defaultUser.id,
+            defaultUser.role
         );
 
         await AuditService.log(
-            user.userId as string,
+            defaultUser.id,
             AuditAction.CREATE,
             'EVENT',
             event.id,
@@ -81,6 +86,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json(event);
     } catch (error: unknown) {
+        console.error('[API EVENTS POST] Error:', error);
         const message = error instanceof Error ? error.message : 'Failed to create event';
         return NextResponse.json({ error: message }, { status: 500 });
     }
