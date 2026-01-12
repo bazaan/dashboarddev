@@ -73,14 +73,24 @@ export default function LoginPage() {
             // Verificar headers de respuesta para debugging
             const setCookieHeader = res.headers.get('set-cookie');
             console.log('[LOGIN] Set-Cookie header:', setCookieHeader ? 'Presente' : 'No presente');
+            if (setCookieHeader) {
+                console.log('[LOGIN] Set-Cookie contenido:', setCookieHeader.substring(0, 300));
+            }
             
-            // Esperar más tiempo para asegurar que las cookies se establezcan en el navegador
+            // CRÍTICO: Esperar suficiente tiempo para que el navegador procese las cookies
             // Las cookies httpOnly se establecen automáticamente por el navegador
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // pero puede tomar tiempo, especialmente en Netlify
+            console.log('[LOGIN] Esperando 1 segundo para que las cookies se establezcan...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Verificar cookies después de esperar (solo para debugging, httpOnly no será visible)
+            console.log('[LOGIN] Todas las cookies del documento:', document.cookie);
             
             // Usar window.location.href para forzar recarga completa y aplicar cookies
             // Esto asegura que el middleware pueda leer las cookies en la siguiente petición
             console.log('[LOGIN] Redirigiendo a /dashboard...');
+            
+            // Intentar redirección con un pequeño delay adicional para asegurar cookies
             window.location.href = '/dashboard';
         } catch (err: unknown) {
             console.error('[LOGIN] Error completo:', err);
