@@ -28,14 +28,23 @@ export async function middleware(request: NextRequest) {
 
     // Verificar token de acceso
     const accessToken = request.cookies.get('accessToken')?.value;
+    const refreshToken = request.cookies.get('refreshToken')?.value;
     const allCookies = request.cookies.getAll();
     
     console.log('[MIDDLEWARE] Path:', path);
     console.log('[MIDDLEWARE] Cookies disponibles:', allCookies.map(c => c.name).join(', '));
     console.log('[MIDDLEWARE] AccessToken presente:', !!accessToken);
+    console.log('[MIDDLEWARE] RefreshToken presente:', !!refreshToken);
+    console.log('[MIDDLEWARE] Todas las cookies:', JSON.stringify(allCookies.map(c => ({ name: c.name, hasValue: !!c.value }))));
 
     if (!accessToken) {
-        console.log('[MIDDLEWARE] No access token encontrado, redirigiendo a login');
+        console.log('[MIDDLEWARE] No access token encontrado');
+        
+        // Si hay refreshToken pero no accessToken, intentar refrescar
+        if (refreshToken) {
+            console.log('[MIDDLEWARE] RefreshToken presente, pero accessToken no. Esto puede ser un problema de timing.');
+        }
+        
         // Solo redirigir si no es una petición de API
         if (path.startsWith('/api/')) {
             return NextResponse.json(
