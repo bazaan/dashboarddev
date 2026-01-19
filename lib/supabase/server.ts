@@ -13,14 +13,13 @@ export async function createSupabaseServerClient() {
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
+      getAll() {
+        return cookieStore.getAll();
       },
-      set(name: string, value: string, options: { path?: string; httpOnly?: boolean; sameSite?: 'lax' | 'strict' | 'none'; secure?: boolean; maxAge?: number }) {
-        cookieStore.set({ name, value, ...options });
-      },
-      remove(name: string, options: { path?: string }) {
-        cookieStore.set({ name, value: '', ...options, maxAge: 0 });
+      setAll(cookies) {
+        cookies.forEach(({ name, value, options }) => {
+          cookieStore.set({ name, value, ...options });
+        });
       },
     },
   });
