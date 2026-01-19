@@ -9,47 +9,80 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  passwordHash String
-  role         Role      @default(DEVELOPER)
-  name         String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  tasks        Task[]
-  auditLogs    AuditLog[]
-  projects     Project[]
+  id             String    @id @default(uuid())
+  email          String    @unique
+  passwordHash   String
+  role           Role      @default(DEVELOPER)
+  status         UserStatus @default(PENDING)
+  name           String?
+  approvedAt     DateTime?
+  approvedById   String?
+  approvedBy     User?     @relation("UserApprovals", fields: [approvedById], references: [id])
+  approvedUsers  User[]    @relation("UserApprovals")
+  blockedAt      DateTime?
+  lastLoginAt    DateTime?
+  starsBalance   Int       @default(0)
+  bonusesBalance Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  tasks          Task[]     @relation("TaskAssignee")
+  approvedTasks  Task[]     @relation("TaskApprover")
+  auditLogs      AuditLog[]
+  projects       Project[]
+  notifications  Notification[]
+  taskComments   TaskComment[]
+  taskHistory    TaskHistory[]
+  reports        Report[]   @relation("ReportAuthor")
+  resolvedReports Report[]  @relation("ReportResolver")
+  reportComments ReportComment[]
+  notes          Note[]
+  bonuses        Bonus[]
+  starTx         StarTransaction[]
+  projectMembers ProjectMember[]
+  eventMembers   EventParticipant[]
+  workSessions   WorkSession[]
 }
 
 model Task {
-  id              String       @id @default(uuid())
-  title           String
-  description     String?
-  priority        Priority     @default(MEDIUM)
-  status          Status       @default(NOT_STARTED)
-  deadline        DateTime?
-  assigneeId      String?
-  assignee        User?        @relation(fields: [assigneeId], references: [id])
-  projectId       String?
-  project         Project?     @relation(fields: [projectId], references: [id])
-  recurrenceType  RecurrenceType?
-  orderIndex      Int          @default(0)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id                String       @id @default(uuid())
+  title             String
+  description       String?
+  priority          Priority     @default(MEDIUM)
+  status            Status       @default(NOT_STARTED)
+  cadence           TaskCadence?
+  deadline          DateTime?
+  assigneeId        String?
+  assignee          User?        @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  projectId         String?
+  project           Project?     @relation(fields: [projectId], references: [id])
+  recurrenceType    RecurrenceType?
+  orderIndex        Int          @default(0)
+  timeEstimateMins  Int?
+  timeSpentMins     Int          @default(0)
+  starsAwarded      Int?
+  approvedById      String?
+  approvedBy        User?        @relation("TaskApprover", fields: [approvedById], references: [id])
+  completedAt       DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  comments          TaskComment[]
+  history           TaskHistory[]
+  starTransactions  StarTransaction[]
 }
 
 model Event {
-  id          String    @id @default(uuid())
-  title       String
-  description String?
-  type        EventType @default(DEVELOPMENT)
-  startDate   DateTime
-  endDate     DateTime
-  progress    Int       @default(0) // 0-100 percentage
-  projectId   String?
-  project     Project?  @relation(fields: [projectId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id            String    @id @default(uuid())
+  title         String
+  description   String?
+  type          EventType @default(DEVELOPMENT)
+  startDate     DateTime
+  endDate       DateTime
+  progress      Int       @default(0) // 0-100 percentage
+  projectId     String?
+  project       Project?  @relation(fields: [projectId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  participants  EventParticipant[]
 }
 
 model AuditLog {
@@ -77,15 +110,150 @@ model Project {
   priority          Priority  @default(MEDIUM)
   orderIndex        Int       @default(0)
   status            ProjectStatus @default(ACTIVE)
+  progress          Int       @default(0)
   tasks             Task[]
   events            Event[]
+  members           ProjectMember[]
+  notes             Note[]
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+}
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  task      Task     @relation(fields: [taskId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id])
+}
+
+model TaskHistory {
+  id          String           @id @default(uuid())
+  taskId      String
+  actorId     String
+  action      TaskHistoryAction
+  fromStatus  Status?
+  toStatus    Status?
+  details     Json?
+  createdAt   DateTime         @default(now())
+  task        Task             @relation(fields: [taskId], references: [id])
+  actor       User             @relation(fields: [actorId], references: [id])
+}
+
+model Note {
+  id        String    @id @default(uuid())
+  title     String
+  content   String
+  scope     NoteScope @default(PERSONAL)
+  projectId String?
+  authorId  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  project   Project?  @relation(fields: [projectId], references: [id])
+  author    User      @relation(fields: [authorId], references: [id])
+}
+
+model Report {
+  id          String       @id @default(uuid())
+  title       String
+  body        String
+  type        ReportType   @default(DAILY)
+  status      ReportStatus @default(OPEN)
+  authorId    String
+  resolverId  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  author      User         @relation("ReportAuthor", fields: [authorId], references: [id])
+  resolver    User?        @relation("ReportResolver", fields: [resolverId], references: [id])
+  comments    ReportComment[]
+}
+
+model ReportComment {
+  id        String   @id @default(uuid())
+  reportId  String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  report    Report   @relation(fields: [reportId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id])
+}
+
+model Notification {
+  id        String            @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  level     NotificationLevel @default(INFO)
+  readAt    DateTime?
+  createdAt DateTime          @default(now())
+  user      User              @relation(fields: [userId], references: [id])
+}
+
+model StarTransaction {
+  id        String   @id @default(uuid())
+  userId    String
+  taskId    String?
+  stars     Int
+  reason    String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  task      Task?    @relation(fields: [taskId], references: [id])
+}
+
+model Bonus {
+  id        String      @id @default(uuid())
+  userId    String
+  type      String
+  status    BonusStatus @default(PENDING)
+  earnedAt  DateTime    @default(now())
+  claimedAt DateTime?
+  user      User        @relation(fields: [userId], references: [id])
+}
+
+model WorkSession {
+  id          String     @id @default(uuid())
+  userId      String
+  status      WorkStatus @default(ACTIVE)
+  startedAt   DateTime   @default(now())
+  breakStart  DateTime?
+  breakEnd    DateTime?
+  endedAt     DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  user        User       @relation(fields: [userId], references: [id])
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String
+  userId    String
+  role      String?
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model EventParticipant {
+  id        String   @id @default(uuid())
+  eventId   String
+  userId    String
+  createdAt DateTime @default(now())
+  event     Event    @relation(fields: [eventId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 enum Role {
   ADMIN
   DEVELOPER
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  BLOCKED
 }
 
 enum Priority {
@@ -99,6 +267,11 @@ enum Status {
   PENDING
   IN_PROGRESS
   DONE
+}
+
+enum TaskCadence {
+  DAILY
+  WEEKLY
 }
 
 enum EventType {
@@ -127,4 +300,49 @@ enum ProjectStatus {
   ON_HOLD
   COMPLETED
   ARCHIVED
+}
+
+enum TaskHistoryAction {
+  CREATE
+  UPDATE
+  UPDATE_STATUS
+  UPDATE_PRIORITY
+  ASSIGN
+  COMPLETE
+  APPROVE
+}
+
+enum NoteScope {
+  PERSONAL
+  PROJECT
+  SHARED
+}
+
+enum ReportType {
+  DAILY
+  WEEKLY
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+}
+
+enum NotificationLevel {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum BonusStatus {
+  PENDING
+  ACTIVE
+  CLAIMED
+  EXPIRED
+}
+
+enum WorkStatus {
+  ACTIVE
+  BREAK
+  ENDED
 }

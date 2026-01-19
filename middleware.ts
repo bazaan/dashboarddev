@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyAccessToken } from './lib/auth';
+import { createServerClient } from '@supabase/ssr';
 
 export async function middleware(request: NextRequest) {
     const path = request.nextUrl.pathname;
@@ -21,29 +21,75 @@ export async function middleware(request: NextRequest) {
         }
     }
 
-    // Public paths - permitir acceso sin autenticación
-    // AUTENTICACIÓN DESHABILITADA: Permitir acceso a todas las rutas sin login
-    if (path === '/login' || path.startsWith('/api/auth') || path.startsWith('/api/test') || path.startsWith('/dashboard') || path === '/') {
+    // Public paths
+    if (
+        path === '/login' ||
+        path === '/register' ||
+        path === '/forgot-password' ||
+        path.startsWith('/api/auth')
+    ) {
         return NextResponse.next();
     }
 
-    // Para APIs, permitir acceso sin autenticación (opcional: puedes mantener la verificación si lo necesitas)
-    if (path.startsWith('/api/')) {
-        // Permitir acceso sin autenticación a todas las APIs
-        return NextResponse.next();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    if (!supabaseUrl || !supabaseAnonKey) {
+        return NextResponse.redirect(new URL('/login', request.url));
     }
 
-    // Permitir acceso a todas las demás rutas
-    return NextResponse.next();
+    const response = NextResponse.next();
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+        cookies: {
+            getAll() {
+                return request.cookies.getAll();
+            },
+            setAll(cookies) {
+                cookies.forEach(({ name, value, options }) => {
+                    response.cookies.set({ name, value, ...options });
+                });
+            },
+        },
+    });
+
+    const { data } = await supabase.auth.getUser();
+
+    if (!data.user) {
+        return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    // Admin protection
+    const status = data.user.user_metadata?.status;
+    if (status !== 'ACTIVE') {
+        await supabase.auth.signOut();
+        return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    if (path.startsWith('/admin')) {
+        const role = data.user.user_metadata?.role;
+        if (role !== 'ADMIN') {
+            return NextResponse.redirect(new URL('/dashboard', request.url));
+        }
+    }
+
+    return response;
 }
 
 export const config = {
     matcher: [
         '/dashboard/:path*',
         '/admin/:path*',
+        '/api/admin/:path*',
         '/api/tasks/:path*',
         '/api/users/:path*',
         '/api/events/:path*',
-        '/api/projects/:path*'
+        '/api/projects/:path*',
+        '/api/notes/:path*',
+        '/api/reports/:path*',
+        '/api/summary/:path*',
+        '/api/admin/announcements/:path*',
+        '/api/admin/stars/:path*',
+        '/api/admin/users/create/:path*',
+        '/api/work-sessions/:path*',
+        '/api/work-sessions/export/:path*'
     ],
 };

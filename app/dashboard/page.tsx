@@ -1,30 +1,52 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { OceanBoard } from '@/components/dashboard/OceanBoard';
 import { CreateTaskDialog } from '@/components/dashboard/CreateTaskDialog';
 import { CreateProjectDialog } from '@/components/dashboard/CreateProjectDialog';
 import { CalendarView } from '@/components/dashboard/CalendarView';
 import { ProjectBriefing } from '@/components/dashboard/ProjectBriefing';
 import { DailyWeeklyTasks } from '@/components/dashboard/DailyWeeklyTasks';
-import { LayoutDashboard, Calendar, Folder, CheckSquare } from 'lucide-react';
+import { OverviewPanel } from '@/components/dashboard/OverviewPanel';
+import { ReportsPanel } from '@/components/dashboard/ReportsPanel';
+import { NotesPanel } from '@/components/dashboard/NotesPanel';
+import { AdminPanel } from '@/components/dashboard/AdminPanel';
+import { LayoutDashboard, Calendar, Folder, CheckSquare, ClipboardList, StickyNote, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
-type View = 'tasks' | 'calendar' | 'projects' | 'daily-weekly';
+type View = 'overview' | 'tasks' | 'calendar' | 'projects' | 'daily-weekly' | 'reports' | 'notes' | 'admin';
 
 export default function DashboardPage() {
-    const [currentView, setCurrentView] = useState<View>('tasks');
+    const [currentView, setCurrentView] = useState<View>('overview');
+    const [role, setRole] = useState<'ADMIN' | 'DEVELOPER'>('DEVELOPER');
+
+    useEffect(() => {
+        const loadRole = async () => {
+            const supabase = createSupabaseBrowserClient();
+            const { data } = await supabase.auth.getUser();
+            const userRole = data.user?.user_metadata?.role;
+            if (userRole === 'ADMIN') {
+                setRole('ADMIN');
+            }
+        };
+        void loadRole();
+    }, []);
 
     const views = [
+        { id: 'overview' as View, label: 'Resumen', icon: LayoutDashboard },
         { id: 'tasks' as View, label: 'Tareas', icon: CheckSquare },
         { id: 'daily-weekly' as View, label: 'Diario/Semanal', icon: Calendar },
-        { id: 'calendar' as View, label: 'Calendario', icon: LayoutDashboard },
+        { id: 'calendar' as View, label: 'Calendario', icon: ClipboardList },
         { id: 'projects' as View, label: 'Proyectos', icon: Folder },
+        { id: 'reports' as View, label: 'Reportes', icon: ClipboardList },
+        { id: 'notes' as View, label: 'Notas', icon: StickyNote },
+        ...(role === 'ADMIN' ? [{ id: 'admin' as View, label: 'Admin', icon: Shield }] : []),
     ];
 
     return (
-        <div className="p-8 h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 overflow-hidden flex flex-col">
+        <div className="p-8 h-screen bg-gradient-to-br from-blue-50/60 via-white to-slate-50 overflow-hidden flex flex-col">
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <div>
@@ -61,10 +83,14 @@ export default function DashboardPage() {
 
             {/* Contenido de la vista actual */}
             <div className="flex-1 overflow-auto">
+                {currentView === 'overview' && <OverviewPanel />}
                 {currentView === 'tasks' && <OceanBoard />}
                 {currentView === 'daily-weekly' && <DailyWeeklyTasks />}
                 {currentView === 'calendar' && <CalendarView />}
                 {currentView === 'projects' && <ProjectBriefing />}
+                {currentView === 'reports' && <ReportsPanel />}
+                {currentView === 'notes' && <NotesPanel />}
+                {currentView === 'admin' && role === 'ADMIN' && <AdminPanel />}
             </div>
         </div>
     );

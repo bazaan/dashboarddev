@@ -5,6 +5,7 @@ import { TaskCard } from './TaskCard';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { Select } from '@/components/ui/select';
 
 type Task = {
     id: string;
@@ -12,16 +13,37 @@ type Task = {
     status: 'NOT_STARTED' | 'PENDING' | 'IN_PROGRESS' | 'DONE';
     priority: 'HIGH' | 'MEDIUM' | 'LOW';
     deadline?: string;
-    assignee?: { name: string };
+    assigneeId?: string | null;
+    assignee?: { name: string; email?: string | null };
     project?: { id: string; name: string; priority: string };
+};
+
+type UserOption = {
+    id: string;
+    name?: string | null;
+    email: string;
 };
 
 export function OceanBoard() {
     const queryClient = useQueryClient();
-    const { data: tasks, isLoading, error } = useQuery({
-        queryKey: ['tasks'],
+    const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
+
+    const { data: users } = useQuery<UserOption[]>({
+        queryKey: ['users'],
         queryFn: async () => {
-            const res = await fetch('/api/tasks');
+            const res = await fetch('/api/users');
+            if (!res.ok) throw new Error('Failed to fetch users');
+            return res.json();
+        },
+    });
+    const { data: tasks, isLoading, error } = useQuery({
+        queryKey: ['tasks', assigneeFilter],
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (assigneeFilter !== 'all') {
+                params.set('assigneeId', assigneeFilter);
+            }
+            const res = await fetch(`/api/tasks${params.toString() ? `?${params.toString()}` : ''}`);
             if (!res.ok) throw new Error('Failed to fetch tasks');
             return res.json();
         }
@@ -63,19 +85,38 @@ export function OceanBoard() {
 
     const columnColors = {
         NOT_STARTED: 'bg-slate-300',
-        PENDING: 'bg-yellow-400',
-        DONE: 'bg-green-400',
+        PENDING: 'bg-blue-500',
+        DONE: 'bg-emerald-500',
     };
 
     return (
-        <div className="flex gap-6 overflow-x-auto pb-8 h-[calc(100vh-12rem)]">
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h3 className="text-sm font-semibold text-slate-900">Tareas del equipo</h3>
+                    <p className="text-xs text-slate-500">Puedes ver todo y filtrar por responsable</p>
+                </div>
+                <div className="w-64">
+                    <Select value={assigneeFilter} onChange={(event) => setAssigneeFilter(event.target.value)}>
+                        <option value="all">Todas las tareas</option>
+                        <option value="me">Mis tareas</option>
+                        {(users || []).map((user) => (
+                            <option key={user.id} value={user.id}>
+                                {user.name || user.email}
+                            </option>
+                        ))}
+                    </Select>
+                </div>
+            </div>
+
+            <div className="flex gap-6 overflow-x-auto pb-8 h-[calc(100vh-16rem)]">
             {Object.entries(columns).map(([status, columnTasks]) => (
-                <div key={status} className="flex-1 min-w-[320px] bg-slate-50/50 rounded-xl p-4 border border-slate-100/50 backdrop-blur-sm">
+                <div key={status} className="flex-1 min-w-[320px] alef-card p-4 backdrop-blur-sm">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="font-bold text-slate-700 flex items-center gap-2">
                             <div className={cn("w-3 h-3 rounded-full", columnColors[status as keyof typeof columnColors])} />
                             {columnLabels[status as keyof typeof columnLabels]}
-                            <span className="text-xs bg-slate-200 px-2 py-0.5 rounded-full text-slate-600">
+                            <span className="alef-chip px-2 py-0.5 text-xs">
                                 {(columnTasks as Task[]).length}
                             </span>
                         </h2>
@@ -90,13 +131,14 @@ export function OceanBoard() {
                             />
                         ))}
                         {(columnTasks as Task[]).length === 0 && (
-                            <div className="h-32 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center text-slate-400 text-sm italic">
+                            <div className="h-32 border-2 border-dashed border-blue-200/70 rounded-lg flex items-center justify-center text-slate-400 text-sm italic">
                                 No hay tareas en {columnLabels[status as keyof typeof columnLabels].toLowerCase()}
                             </div>
                         )}
                     </div>
                 </div>
             ))}
+            </div>
         </div>
     );
 }

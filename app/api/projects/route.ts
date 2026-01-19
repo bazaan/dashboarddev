@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { ProjectService } from '@/lib/services/project.service';
-import { verifyAccessToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
 import { AuditService } from '@/lib/services/audit.service';
 import { AuditAction } from '@prisma/client';
 import { z } from 'zod';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const createProjectSchema = z.object({
     name: z.string().min(1),
@@ -18,16 +17,20 @@ const createProjectSchema = z.object({
     orderIndex: z.number().optional(),
 });
 
-async function getAuth(req: Request) {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('accessToken')?.value;
-    if (!token) return null;
-    return await verifyAccessToken(token);
+async function getAuth() {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return null;
+    return {
+        userId: data.user.id,
+        role: data.user.user_metadata?.role || 'DEVELOPER',
+    };
 }
 
 export async function GET(req: Request) {
     try {
-        // Autenticación deshabilitada - obtener todos los proyectos
+        const user = await getAuth();
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const projects = await ProjectService.getAll();
         return NextResponse.json(projects);
     } catch (error: unknown) {
@@ -39,17 +42,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
-        // Autenticación deshabilitada - usar un usuario por defecto
+        const user = await getAuth();
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const body = await req.json();
         const data = createProjectSchema.parse(body);
-
-        // Obtener el primer usuario de la base de datos como owner por defecto
-        const { prisma } = await import('@/lib/prisma');
-        const defaultUser = await prisma.user.findFirst();
-        
-        if (!defaultUser) {
-            return NextResponse.json({ error: 'No users found in database' }, { status: 500 });
-        }
 
         const project = await ProjectService.create(
             {
@@ -58,12 +54,12 @@ export async function POST(req: Request) {
                 driveN8nFlowUrl: data.driveN8nFlowUrl || undefined,
                 driveDashboardUrl: data.driveDashboardUrl || undefined,
             },
-            defaultUser.id,
-            defaultUser.role
+            user.userId as string,
+            user.role as string
         );
 
         await AuditService.log(
-            defaultUser.id,
+            user.userId as string,
             AuditAction.CREATE,
             'PROJECT',
             project.id,

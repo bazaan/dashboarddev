@@ -17,7 +17,13 @@ import {
 } from '@/components/ui/dialog';
 import { Plus, Loader2, Calendar as CalendarIcon, Code, Package } from 'lucide-react';
 
-export function CreateEventDialog() {
+export function CreateEventDialog({
+    triggerLabel = 'Nuevo Evento',
+    defaultProjectId,
+}: {
+    triggerLabel?: string;
+    defaultProjectId?: string;
+}) {
     const [open, setOpen] = useState(false);
     const queryClient = useQueryClient();
 
@@ -86,17 +92,19 @@ export function CreateEventDialog() {
             startDate: startDateTime,
             endDate: endDateTime,
             progress: formData.get('progress') ? parseInt(formData.get('progress') as string) : 0,
-            projectId: formData.get('projectId') && formData.get('projectId') !== '' ? formData.get('projectId') : undefined,
+            projectId: defaultProjectId
+                ? defaultProjectId
+                : formData.get('projectId') && formData.get('projectId') !== '' ? formData.get('projectId') : undefined,
         });
     };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button className="shadow-md shadow-blue-200/60">
                     <Plus className="mr-2 h-4 w-4" />
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    Nuevo Evento
+                    {triggerLabel}
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
@@ -108,13 +116,13 @@ export function CreateEventDialog() {
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="title" className="text-right text-sm font-medium">
+                        <label htmlFor="title" className="text-right text-sm font-semibold text-slate-700">
                             Título *
                         </label>
                         <Input id="title" name="title" className="col-span-3" required />
                     </div>
                     <div className="grid grid-cols-4 items-start gap-4">
-                        <label htmlFor="description" className="text-right text-sm font-medium pt-2">
+                        <label htmlFor="description" className="text-right text-sm font-semibold text-slate-700 pt-2">
                             Descripción
                         </label>
                         <Textarea
@@ -126,7 +134,7 @@ export function CreateEventDialog() {
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="type" className="text-right text-sm font-medium">
+                        <label htmlFor="type" className="text-right text-sm font-semibold text-slate-700">
                             Tipo *
                         </label>
                         <Select id="type" name="type" className="col-span-3" required>
@@ -136,20 +144,31 @@ export function CreateEventDialog() {
                         </Select>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="projectId" className="text-right text-sm font-medium">
+                        <label htmlFor="projectId" className="text-right text-sm font-semibold text-slate-700">
                             Proyecto
                         </label>
-                        <Select id="projectId" name="projectId" className="col-span-3">
-                            <option value="">Sin proyecto</option>
-                            {projects?.map((project: { id: string; name: string }) => (
-                                <option key={project.id} value={project.id}>
-                                    {project.name}
-                                </option>
-                            ))}
-                        </Select>
+                        {defaultProjectId ? (
+                            <div className="col-span-3">
+                                <Input
+                                    value={projects?.find((p: { id: string; name: string }) => p.id === defaultProjectId)?.name || 'Proyecto seleccionado'}
+                                    readOnly
+                                    className="bg-blue-50/50 border-blue-200"
+                                />
+                                <input type="hidden" name="projectId" value={defaultProjectId} />
+                            </div>
+                        ) : (
+                            <Select id="projectId" name="projectId" className="col-span-3">
+                                <option value="">Sin proyecto</option>
+                                {projects?.map((project: { id: string; name: string }) => (
+                                    <option key={project.id} value={project.id}>
+                                        {project.name}
+                                    </option>
+                                ))}
+                            </Select>
+                        )}
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="startDate" className="text-right text-sm font-medium">
+                        <label htmlFor="startDate" className="text-right text-sm font-semibold text-slate-700">
                             Fecha Inicio *
                         </label>
                         <Input
@@ -161,7 +180,7 @@ export function CreateEventDialog() {
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="startTime" className="text-right text-sm font-medium">
+                        <label htmlFor="startTime" className="text-right text-sm font-semibold text-slate-700">
                             Hora Inicio
                         </label>
                         <Input
@@ -173,7 +192,7 @@ export function CreateEventDialog() {
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="endDate" className="text-right text-sm font-medium">
+                        <label htmlFor="endDate" className="text-right text-sm font-semibold text-slate-700">
                             Fecha Fin *
                         </label>
                         <Input
@@ -185,7 +204,7 @@ export function CreateEventDialog() {
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="endTime" className="text-right text-sm font-medium">
+                        <label htmlFor="endTime" className="text-right text-sm font-semibold text-slate-700">
                             Hora Fin
                         </label>
                         <Input
@@ -197,7 +216,7 @@ export function CreateEventDialog() {
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="progress" className="text-right text-sm font-medium">
+                        <label htmlFor="progress" className="text-right text-sm font-semibold text-slate-700">
                             Progreso (%)
                         </label>
                         <Input

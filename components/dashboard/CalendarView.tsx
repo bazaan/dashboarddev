@@ -150,11 +150,11 @@ export function CalendarView() {
             </div>
 
             {/* Grid del calendario */}
-            <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+            <div className="alef-card-strong overflow-hidden">
                 {/* Días de la semana */}
-                <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200">
+                <div className="grid grid-cols-7 bg-blue-50/60 border-b border-blue-100">
                     {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((day) => (
-                        <div key={day} className="p-2 text-center text-sm font-semibold text-slate-600">
+                        <div key={day} className="p-2 text-center text-sm font-semibold text-blue-800/80">
                             {day}
                         </div>
                     ))}
@@ -171,15 +171,15 @@ export function CalendarView() {
                             <div
                                 key={idx}
                                 className={cn(
-                                    'min-h-[100px] border-r border-b border-slate-200 p-2',
+                                    'min-h-[100px] border-r border-b border-blue-100/70 p-2',
                                     !isCurrentMonth && 'bg-slate-50 text-slate-400',
-                                    isToday && 'bg-blue-50'
+                                    isToday && 'bg-blue-100/50'
                                 )}
                             >
                                 <div
                                     className={cn(
                                         'text-sm font-semibold mb-1',
-                                        isToday && 'text-blue-600',
+                                        isToday && 'text-blue-700',
                                         !isCurrentMonth && 'text-slate-400'
                                     )}
                                 >
@@ -192,7 +192,7 @@ export function CalendarView() {
                                             className={cn(
                                                 'text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-all',
                                                 event.type === 'DEVELOPMENT' && 'bg-blue-100 text-blue-800 hover:bg-blue-200',
-                                                event.type === 'DELIVERY' && 'bg-green-100 text-green-800 hover:bg-green-200',
+                                                event.type === 'DELIVERY' && 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200',
                                                 event.type === 'OTHER' && 'bg-slate-100 text-slate-800 hover:bg-slate-200'
                                             )}
                                             title={`${event.title} - ${event.progress}% - Click para detalles`}
@@ -247,7 +247,7 @@ export function CalendarView() {
                     <span>Desarrollo</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-green-100 rounded" />
+                    <div className="w-4 h-4 bg-emerald-100 rounded" />
                     <span>Entrega</span>
                 </div>
                 <div className="flex items-center gap-2">

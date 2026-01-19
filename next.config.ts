@@ -46,6 +46,9 @@ const nextConfig: NextConfig = {
     // Turbopack maneja los fallbacks automáticamente
     // Si necesitas configuración específica, agrégala aquí
   },
+
+  // Ocultar el UI de Dev Tools en desarrollo
+  devIndicators: false,
 };
 
 export default nextConfig;

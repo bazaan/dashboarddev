@@ -1,20 +1,22 @@
 import { NextResponse } from 'next/server';
 import { EventService } from '@/lib/services/event.service';
-import { verifyAccessToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
 import { AuditService } from '@/lib/services/audit.service';
 import { AuditAction } from '@prisma/client';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
-async function getAuth(req: Request) {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('accessToken')?.value;
-    if (!token) return null;
-    return await verifyAccessToken(token);
+async function getAuth() {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return null;
+    return {
+        userId: data.user.id,
+        role: data.user.user_metadata?.role || 'DEVELOPER',
+    };
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const user = await getAuth(req);
+        const user = await getAuth();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const { id } = await params;
@@ -39,7 +41,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const user = await getAuth(req);
+        const user = await getAuth();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const { id } = await params;

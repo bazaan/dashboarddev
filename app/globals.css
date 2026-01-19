@@ -20,7 +20,21 @@
 }
 
 body {
-  background: var(--background);
+  background: radial-gradient(1200px 600px at 10% -10%, rgba(59, 130, 246, 0.12), transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, rgba(14, 116, 144, 0.10), transparent 55%),
+    var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .alef-card {
+    @apply rounded-xl border border-blue-100/80 bg-white/90 shadow-sm shadow-blue-100/60;
+  }
+  .alef-card-strong {
+    @apply rounded-xl border border-blue-200 bg-white shadow-md shadow-blue-200/50;
+  }
+  .alef-chip {
+    @apply rounded-full bg-blue-50 text-blue-700 border border-blue-100;
+  }
 }

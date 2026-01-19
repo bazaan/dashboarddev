@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { EventService } from '@/lib/services/event.service';
-import { verifyAccessToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
 import { AuditService } from '@/lib/services/audit.service';
 import { AuditAction, EventType } from '@prisma/client';
 import { z } from 'zod';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const createEventSchema = z.object({
     title: z.string().min(1),
@@ -16,16 +15,20 @@ const createEventSchema = z.object({
     projectId: z.string().uuid().optional().or(z.literal('')),
 });
 
-async function getAuth(req: Request) {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('accessToken')?.value;
-    if (!token) return null;
-    return await verifyAccessToken(token);
+async function getAuth() {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return null;
+    return {
+        userId: data.user.id,
+        role: data.user.user_metadata?.role || 'DEVELOPER',
+    };
 }
 
 export async function GET(req: Request) {
     try {
-        // Autenticación deshabilitada - obtener todos los eventos
+        const user = await getAuth();
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const { searchParams } = new URL(req.url);
         const type = searchParams.get('type') as EventType | null;
         const projectId = searchParams.get('projectId');
@@ -54,17 +57,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
-        // Autenticación deshabilitada - usar un usuario por defecto
+        const user = await getAuth();
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const body = await req.json();
         const data = createEventSchema.parse(body);
-
-        // Obtener el primer usuario de la base de datos como owner por defecto
-        const { prisma } = await import('@/lib/prisma');
-        const defaultUser = await prisma.user.findFirst();
-        
-        if (!defaultUser) {
-            return NextResponse.json({ error: 'No users found in database' }, { status: 500 });
-        }
 
         const event = await EventService.create(
             {
@@ -72,12 +68,12 @@ export async function POST(req: Request) {
                 type: data.type as EventType,
                 projectId: data.projectId && data.projectId !== '' ? data.projectId : undefined,
             },
-            defaultUser.id,
-            defaultUser.role
+            user.userId as string,
+            user.role as string
         );
 
         await AuditService.log(
-            defaultUser.id,
+            user.userId as string,
             AuditAction.CREATE,
             'EVENT',
             event.id,

@@ -128,13 +128,13 @@ export function EventDetailsDialog({ event, open, onOpenChange }: EventDetailsDi
 
                 <div className="space-y-4">
                     {/* Información del evento */}
-                    <div className="space-y-2">
+                    <div className="space-y-2 alef-card p-4">
                         <div className="flex items-center gap-2">
                             <Badge
                                 className={cn(
-                                    event.type === 'DEVELOPMENT' && 'bg-blue-100 text-blue-800',
-                                    event.type === 'DELIVERY' && 'bg-green-100 text-green-800',
-                                    event.type === 'OTHER' && 'bg-slate-100 text-slate-800'
+                                    event.type === 'DEVELOPMENT' && 'bg-blue-100 text-blue-800 border border-blue-200',
+                                    event.type === 'DELIVERY' && 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+                                    event.type === 'OTHER' && 'bg-slate-100 text-slate-800 border border-slate-200'
                                 )}
                             >
                                 {event.type === 'DEVELOPMENT' && 'Desarrollo'}
@@ -142,12 +142,14 @@ export function EventDetailsDialog({ event, open, onOpenChange }: EventDetailsDi
                                 {event.type === 'OTHER' && 'Otro'}
                             </Badge>
                             {event.project && (
-                                <Badge variant="outline">{event.project.name}</Badge>
+                                <Badge variant="outline" className="border-blue-200 text-blue-700">
+                                    {event.project.name}
+                                </Badge>
                             )}
                         </div>
 
                         {event.description && (
-                            <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">
+                            <p className="text-sm text-slate-700 bg-blue-50/60 p-3 rounded-lg border border-blue-100">
                                 {event.description}
                             </p>
                         )}
@@ -173,7 +175,7 @@ export function EventDetailsDialog({ event, open, onOpenChange }: EventDetailsDi
                                 <span className="text-slate-700 font-medium">Progreso</span>
                                 <span className="text-slate-600">{event.progress}%</span>
                             </div>
-                            <div className="h-3 bg-slate-200 rounded-full overflow-hidden">
+                            <div className="h-3 bg-blue-100 rounded-full overflow-hidden">
                                 <div
                                     className={cn(
                                         'h-full transition-all',
@@ -186,7 +188,7 @@ export function EventDetailsDialog({ event, open, onOpenChange }: EventDetailsDi
                     </div>
 
                     {/* Tareas relacionadas */}
-                    <div className="border-t border-slate-200 pt-4">
+                    <div className="border-t border-blue-100 pt-4">
                         <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                             <CheckSquare2 className="w-5 h-5" />
                             Tareas Relacionadas ({relatedTasks?.length || 0})
@@ -201,7 +203,7 @@ export function EventDetailsDialog({ event, open, onOpenChange }: EventDetailsDi
                                 {relatedTasks.map((task) => (
                                     <div
                                         key={task.id}
-                                        className="flex items-start justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors"
+                                        className="flex items-start justify-between p-3 bg-blue-50/60 rounded-lg border border-blue-100 hover:bg-blue-50 transition-colors"
                                     >
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-1">

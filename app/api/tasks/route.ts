@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { TaskService } from '@/lib/services/task.service';
-import { verifyAccessToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
 import { AuditService } from '@/lib/services/audit.service';
 import { AuditAction } from '@prisma/client';
 import { z } from 'zod';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const createTaskSchema = z.object({
     title: z.string().min(1),
@@ -15,22 +14,29 @@ const createTaskSchema = z.object({
     assigneeId: z.string().uuid().optional(),
     projectId: z.string().uuid().optional(),
     recurrenceType: z.enum(['NONE', 'DAILY', 'WEEKLY']).optional(),
-    orderIndex: z.number().optional(),
+    cadence: z.enum(['DAILY', 'WEEKLY']).optional(),
+    orderIndex: z.coerce.number().optional(),
+    timeEstimateMins: z.coerce.number().optional(),
 });
 
-async function getAuth(req: Request) {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('accessToken')?.value;
-    if (!token) return null;
-    return await verifyAccessToken(token);
+async function getAuth() {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return null;
+    return {
+        userId: data.user.id,
+        role: data.user.user_metadata?.role || 'DEVELOPER',
+    };
 }
 
 export async function GET(req: Request) {
     try {
-        // Autenticación deshabilitada - obtener todas las tareas
+        const user = await getAuth();
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const { searchParams } = new URL(req.url);
         const type = searchParams.get('type'); // 'daily' or 'weekly'
         const date = searchParams.get('date');
+        const assigneeId = searchParams.get('assigneeId'); // 'me' | uuid
 
         let tasks;
 
@@ -39,8 +45,12 @@ export async function GET(req: Request) {
         } else if (type === 'weekly') {
             tasks = await TaskService.getWeeklyTasks(date ? new Date(date) : undefined);
         } else {
-            // Obtener todas las tareas sin filtro de usuario
             tasks = await TaskService.getAll();
+        }
+
+        if (assigneeId && assigneeId !== 'all') {
+            const targetId = assigneeId === 'me' ? (user.userId as string) : assigneeId;
+            tasks = (tasks || []).filter((task: { assigneeId?: string | null }) => task.assigneeId === targetId);
         }
 
         return NextResponse.json(tasks);
@@ -53,22 +63,14 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
-        // Autenticación deshabilitada - usar un usuario por defecto
+        const user = await getAuth();
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const body = await req.json();
         const data = createTaskSchema.parse(body);
-
-        // Obtener el primer usuario de la base de datos como owner por defecto
-        const { prisma } = await import('@/lib/prisma');
-        const defaultUser = await prisma.user.findFirst();
-        
-        if (!defaultUser) {
-            return NextResponse.json({ error: 'No users found in database' }, { status: 500 });
-        }
-
-        const task = await TaskService.create(data, defaultUser.id, defaultUser.role);
+        const task = await TaskService.create(data, user.userId as string, user.role as string);
 
         await AuditService.log(
-            defaultUser.id,
+            user.userId as string,
             AuditAction.CREATE,
             'TASK',
             task.id,

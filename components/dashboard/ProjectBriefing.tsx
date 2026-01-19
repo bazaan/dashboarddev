@@ -3,12 +3,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, ChevronDown, ChevronUp, FileText, Workflow, LayoutDashboard, Folder } from 'lucide-react';
+import { ExternalLink, ChevronDown, ChevronUp, FileText, Workflow, LayoutDashboard, Folder, Flag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { CreateEventDialog } from './CreateEventDialog';
 
 type Project = {
     id: string;
@@ -92,6 +93,19 @@ export function ProjectBriefing() {
         setExpandedProject(expandedProject === projectId ? null : projectId);
     };
 
+    const getProjectProgress = (project: Project) => {
+        if (!project.tasks.length) return 0;
+        const done = project.tasks.filter((task) => task.status === 'DONE').length;
+        return Math.round((done / project.tasks.length) * 100);
+    };
+
+    const getProgressColor = (progress: number) => {
+        if (progress >= 80) return 'bg-emerald-500';
+        if (progress >= 50) return 'bg-blue-500';
+        if (progress >= 25) return 'bg-amber-500';
+        return 'bg-slate-400';
+    };
+
     return (
         <div className="space-y-4">
             {projects.map((project) => {
@@ -103,11 +117,11 @@ export function ProjectBriefing() {
                         key={project.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden"
+                        className="alef-card-strong overflow-hidden"
                     >
                         {/* Header del proyecto */}
                         <div
-                            className="p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                            className="p-4 cursor-pointer hover:bg-blue-50/50 transition-colors"
                             onClick={() => toggleExpand(project.id)}
                         >
                             <div className="flex items-start justify-between">
@@ -131,6 +145,7 @@ export function ProjectBriefing() {
                                         <span>Owner: {project.owner.name || project.owner.email}</span>
                                         <span>{project.tasks.length} tareas</span>
                                         <span>{project.events.length} eventos</span>
+                                        <span>Progreso {getProjectProgress(project)}%</span>
                                     </div>
                                 </div>
                                 <Button
@@ -159,9 +174,21 @@ export function ProjectBriefing() {
                                     animate={{ height: 'auto', opacity: 1 }}
                                     exit={{ height: 0, opacity: 0 }}
                                     transition={{ duration: 0.3 }}
-                                    className="border-t border-slate-200"
+                                    className="border-t border-blue-100"
                                 >
                                     <div className="p-4 space-y-4">
+                                        <div className="alef-card p-4">
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className="font-semibold text-slate-700">Progreso general</span>
+                                                <span className="text-slate-600">{getProjectProgress(project)}%</span>
+                                            </div>
+                                            <div className="mt-2 h-2 bg-blue-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className={cn('h-full transition-all', getProgressColor(getProjectProgress(project)))}
+                                                    style={{ width: `${getProjectProgress(project)}%` }}
+                                                />
+                                            </div>
+                                        </div>
                                         {/* Briefing simplificado */}
                                         {project.brief && (
                                             <div>
@@ -169,7 +196,7 @@ export function ProjectBriefing() {
                                                     <FileText className="w-4 h-4" />
                                                     Briefing
                                                 </h4>
-                                                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">
+                                                <p className="text-sm text-slate-600 bg-blue-50/60 p-3 rounded-lg border border-blue-100">
                                                     {project.brief}
                                                 </p>
                                             </div>
@@ -182,11 +209,58 @@ export function ProjectBriefing() {
                                                     <FileText className="w-4 h-4" />
                                                     Briefing Detallado
                                                 </h4>
-                                                <div className="text-sm text-slate-600 bg-slate-50 p-4 rounded-lg whitespace-pre-wrap">
+                                                <div className="text-sm text-slate-600 bg-blue-50/60 p-4 rounded-lg border border-blue-100 whitespace-pre-wrap">
                                                     {project.detailedBrief}
                                                 </div>
                                             </div>
                                         )}
+
+                                        <div>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                                    <LayoutDashboard className="w-4 h-4" />
+                                                    Roadmap del Proyecto
+                                                </h4>
+                                                <CreateEventDialog triggerLabel="Agregar hito" defaultProjectId={project.id} />
+                                            </div>
+                                            {project.events.length > 0 ? (
+                                                <div className="space-y-3">
+                                                    {project.events
+                                                        .slice()
+                                                        .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+                                                        .map((event) => (
+                                                            <div key={event.id} className="alef-card p-3">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div>
+                                                                        <p className="text-sm font-semibold text-slate-900">
+                                                                            {event.title}
+                                                                        </p>
+                                                                        <p className="text-xs text-slate-500">
+                                                                            {format(new Date(event.startDate), 'dd MMM')} -{' '}
+                                                                            {format(new Date(event.endDate), 'dd MMM')}
+                                                                        </p>
+                                                                    </div>
+                                                                    <Badge className="alef-chip text-xs">
+                                                                        {event.type}
+                                                                    </Badge>
+                                                                </div>
+                                                                <div className="mt-2 h-2 bg-blue-100 rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className={cn('h-full transition-all', getProgressColor(event.progress))}
+                                                                        style={{ width: `${event.progress}%` }}
+                                                                    />
+                                                                </div>
+                                                                <span className="text-xs text-slate-500">{event.progress}%</span>
+                                                            </div>
+                                                        ))}
+                                                </div>
+                                            ) : (
+                                                <div className="alef-card p-3 text-sm text-slate-500 flex items-center gap-2">
+                                                    <Flag className="w-4 h-4 text-blue-600" />
+                                                    Aún no hay hitos. Crea el primero.
+                                                </div>
+                                            )}
+                                        </div>
 
                                         {/* Enlaces a Google Drive */}
                                         {hasDriveLinks && (
@@ -201,7 +275,7 @@ export function ProjectBriefing() {
                                                             href={project.drivePromptsUrl}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 p-2 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
+                                                            className="flex items-center gap-2 text-sm text-blue-700 hover:text-blue-900 p-2 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-100"
                                                         >
                                                             <FileText className="w-4 h-4" />
                                                             <span>Prompts y Documentación</span>
@@ -213,7 +287,7 @@ export function ProjectBriefing() {
                                                             href={project.driveN8nFlowUrl}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 p-2 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
+                                                            className="flex items-center gap-2 text-sm text-blue-700 hover:text-blue-900 p-2 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-100"
                                                         >
                                                             <Workflow className="w-4 h-4" />
                                                             <span>Concepto del Flujo n8n</span>
@@ -225,7 +299,7 @@ export function ProjectBriefing() {
                                                             href={project.driveDashboardUrl}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 p-2 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
+                                                            className="flex items-center gap-2 text-sm text-blue-700 hover:text-blue-900 p-2 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-100"
                                                         >
                                                             <LayoutDashboard className="w-4 h-4" />
                                                             <span>Accesos del Dashboard</span>
@@ -246,7 +320,7 @@ export function ProjectBriefing() {
                                                     {project.tasks.slice(0, 5).map((task) => (
                                                         <div
                                                             key={task.id}
-                                                            className="text-sm text-slate-600 bg-slate-50 p-2 rounded"
+                                                            className="text-sm text-slate-600 bg-blue-50/60 p-2 rounded border border-blue-100"
                                                         >
                                                             {task.title} - {task.status} - {task.priority}
                                                         </div>

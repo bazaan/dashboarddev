@@ -64,7 +64,7 @@ export function CreateProjectDialog() {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button className="shadow-md shadow-blue-200/60">
                     <Plus className="mr-2 h-4 w-4" /> <Folder className="mr-2 h-4 w-4" /> Nuevo Proyecto
                 </Button>
             </DialogTrigger>
@@ -77,19 +77,19 @@ export function CreateProjectDialog() {
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="name" className="text-right text-sm font-medium">
+                        <label htmlFor="name" className="text-right text-sm font-semibold text-slate-700">
                             Nombre *
                         </label>
                         <Input id="name" name="name" className="col-span-3" required />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="description" className="text-right text-sm font-medium">
+                        <label htmlFor="description" className="text-right text-sm font-semibold text-slate-700">
                             Descripción
                         </label>
                         <Textarea id="description" name="description" className="col-span-3" rows={3} />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="priority" className="text-right text-sm font-medium">
+                        <label htmlFor="priority" className="text-right text-sm font-semibold text-slate-700">
                             Prioridad *
                         </label>
                         <Select id="priority" name="priority" className="col-span-3" required>
@@ -99,7 +99,7 @@ export function CreateProjectDialog() {
                         </Select>
                     </div>
                     <div className="grid grid-cols-4 items-start gap-4">
-                        <label htmlFor="brief" className="text-right text-sm font-medium pt-2">
+                        <label htmlFor="brief" className="text-right text-sm font-semibold text-slate-700 pt-2">
                             Briefing
                         </label>
                         <Textarea
@@ -111,7 +111,7 @@ export function CreateProjectDialog() {
                         />
                     </div>
                     <div className="grid grid-cols-4 items-start gap-4">
-                        <label htmlFor="detailedBrief" className="text-right text-sm font-medium pt-2">
+                        <label htmlFor="detailedBrief" className="text-right text-sm font-semibold text-slate-700 pt-2">
                             Briefing Detallado
                         </label>
                         <Textarea
@@ -123,7 +123,7 @@ export function CreateProjectDialog() {
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="drivePromptsUrl" className="text-right text-sm font-medium">
+                        <label htmlFor="drivePromptsUrl" className="text-right text-sm font-semibold text-slate-700">
                             Drive: Prompts
                         </label>
                         <Input
@@ -135,7 +135,7 @@ export function CreateProjectDialog() {
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="driveN8nFlowUrl" className="text-right text-sm font-medium">
+                        <label htmlFor="driveN8nFlowUrl" className="text-right text-sm font-semibold text-slate-700">
                             Drive: Flujo n8n
                         </label>
                         <Input
@@ -147,7 +147,7 @@ export function CreateProjectDialog() {
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="driveDashboardUrl" className="text-right text-sm font-medium">
+                        <label htmlFor="driveDashboardUrl" className="text-right text-sm font-semibold text-slate-700">
                             Drive: Dashboard
                         </label>
                         <Input

@@ -39,6 +39,8 @@ export function CreateTaskDialog() {
             deadline?: unknown;
             projectId?: unknown;
             recurrenceType?: unknown;
+            cadence?: unknown;
+            timeEstimateMins?: unknown;
         }) => {
             const res = await fetch('/api/tasks', {
                 method: 'POST',
@@ -62,6 +64,7 @@ export function CreateTaskDialog() {
         const formData = new FormData(e.currentTarget);
         const projectId = formData.get('projectId');
         const recurrenceType = formData.get('recurrenceType');
+        const cadence = formData.get('cadence');
         createMutation.mutate({
             title: formData.get('title'),
             description: formData.get('description'),
@@ -70,13 +73,15 @@ export function CreateTaskDialog() {
             deadline: formData.get('deadline') || undefined,
             projectId: projectId && projectId !== '' ? projectId : undefined,
             recurrenceType: recurrenceType && recurrenceType !== 'NONE' ? recurrenceType : undefined,
+            cadence: cadence && cadence !== 'NONE' ? cadence : undefined,
+            timeEstimateMins: formData.get('timeEstimateMins') || undefined,
         });
     };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button className="shadow-md shadow-blue-200/60">
                     <Plus className="mr-2 h-4 w-4" /> Nueva Tarea
                 </Button>
             </DialogTrigger>
@@ -89,13 +94,13 @@ export function CreateTaskDialog() {
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="title" className="text-right text-sm font-medium">
+                        <label htmlFor="title" className="text-right text-sm font-semibold text-slate-700">
                             Título *
                         </label>
                         <Input id="title" name="title" className="col-span-3" placeholder="Nombre de la tarea" required />
                     </div>
                     <div className="grid grid-cols-4 items-start gap-4">
-                        <label htmlFor="description" className="text-right text-sm font-medium pt-2">
+                        <label htmlFor="description" className="text-right text-sm font-semibold text-slate-700 pt-2">
                             Descripción
                         </label>
                         <Textarea
@@ -107,34 +112,40 @@ export function CreateTaskDialog() {
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="priority" className="text-right text-sm font-medium">
+                        <label htmlFor="priority" className="text-right text-sm font-semibold text-slate-700">
                             Prioridad *
                         </label>
-                        <Select id="priority" name="priority" className="col-span-3" required>
+                        <Select id="priority" name="priority" className="col-span-3" defaultValue="MEDIUM" required>
                             <option value="HIGH">🔴 Alta (High)</option>
-                            <option value="MEDIUM" selected>🟠 Media (Medium)</option>
+                            <option value="MEDIUM">🟠 Media (Medium)</option>
                             <option value="LOW">🟢 Baja (Low)</option>
                         </Select>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="status" className="text-right text-sm font-medium">
+                        <label htmlFor="status" className="text-right text-sm font-semibold text-slate-700">
                             Estado *
                         </label>
-                        <Select id="status" name="status" className="col-span-3" required>
-                            <option value="NOT_STARTED" selected>⚪ Sin Iniciar</option>
+                        <Select id="status" name="status" className="col-span-3" defaultValue="NOT_STARTED" required>
+                            <option value="NOT_STARTED">⚪ Sin Iniciar</option>
                             <option value="PENDING">🟡 Pendiente</option>
                             <option value="IN_PROGRESS">🔵 En Progreso</option>
                             <option value="DONE">🟢 Acabado</option>
                         </Select>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="deadline" className="text-right text-sm font-medium">
+                        <label htmlFor="timeEstimateMins" className="text-right text-sm font-semibold text-slate-700">
+                            Tiempo est. (min)
+                        </label>
+                        <Input id="timeEstimateMins" name="timeEstimateMins" type="number" min="0" className="col-span-3" />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <label htmlFor="deadline" className="text-right text-sm font-semibold text-slate-700">
                             Deadline
                         </label>
                         <Input id="deadline" name="deadline" type="date" className="col-span-3" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="projectId" className="text-right text-sm font-medium">
+                        <label htmlFor="projectId" className="text-right text-sm font-semibold text-slate-700">
                             Proyecto
                         </label>
                         <Select id="projectId" name="projectId" className="col-span-3">
@@ -147,10 +158,20 @@ export function CreateTaskDialog() {
                         </Select>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <label htmlFor="recurrenceType" className="text-right text-sm font-medium">
+                        <label htmlFor="cadence" className="text-right text-sm font-semibold text-slate-700">
+                            Clasificación
+                        </label>
+                        <Select id="cadence" name="cadence" className="col-span-3" defaultValue="NONE">
+                            <option value="NONE">Sin clasificación</option>
+                            <option value="DAILY">Daily Task</option>
+                            <option value="WEEKLY">Weekly Task</option>
+                        </Select>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <label htmlFor="recurrenceType" className="text-right text-sm font-semibold text-slate-700">
                             Recurrencia
                         </label>
-                        <Select id="recurrenceType" name="recurrenceType" className="col-span-3">
+                        <Select id="recurrenceType" name="recurrenceType" className="col-span-3" defaultValue="NONE">
                             <option value="NONE">Sin recurrencia</option>
                             <option value="DAILY">Diaria</option>
                             <option value="WEEKLY">Semanal</option>

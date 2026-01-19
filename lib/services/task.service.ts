@@ -15,7 +15,9 @@ export const TaskService = {
             assigneeId?: string;
             projectId?: string;
             recurrenceType?: RecurrenceType | string;
+            cadence?: 'DAILY' | 'WEEKLY';
             orderIndex?: number;
+            timeEstimateMins?: number;
         },
         actorId: string,
         actorRole: string
@@ -41,8 +43,14 @@ export const TaskService = {
             if (data.recurrenceType !== undefined) {
                 taskData.recurrenceType = data.recurrenceType || 'NONE';
             }
+            if (data.cadence !== undefined) {
+                taskData.cadence = data.cadence;
+            }
             if (data.orderIndex !== undefined) {
                 taskData.orderIndex = data.orderIndex || 0;
+            }
+            if (data.timeEstimateMins !== undefined) {
+                taskData.timeEstimateMins = Number(data.timeEstimateMins) || 0;
             }
 
             return await prisma.task.create({
@@ -130,6 +138,7 @@ export const TaskService = {
             return await prisma.task.findMany({
                 where: {
                 OR: [
+                    { cadence: 'DAILY' },
                     { recurrenceType: 'DAILY' },
                     {
                         AND: [
@@ -184,6 +193,7 @@ export const TaskService = {
             return await prisma.task.findMany({
                 where: {
                 OR: [
+                    { cadence: 'WEEKLY' },
                     { recurrenceType: 'WEEKLY' },
                     {
                         AND: [
@@ -230,7 +240,10 @@ export const TaskService = {
             assigneeId: string;
             projectId: string;
             recurrenceType: RecurrenceType | string;
+            cadence: 'DAILY' | 'WEEKLY';
             orderIndex: number;
+            timeEstimateMins: number;
+            starsAwarded: number;
         }>,
         actorId: string,
         actorRole: string
@@ -241,7 +254,18 @@ export const TaskService = {
         // Developer restrictions
         if (actorRole === Role.DEVELOPER) {
             // Devs can only change status
-            if (data.priority || data.title || data.description || data.deadline || data.assigneeId || data.projectId || data.recurrenceType || data.orderIndex !== undefined) {
+            if (
+                data.priority ||
+                data.title ||
+                data.description ||
+                data.deadline ||
+                data.assigneeId ||
+                data.projectId ||
+                data.recurrenceType ||
+                data.cadence ||
+                data.orderIndex !== undefined ||
+                data.timeEstimateMins !== undefined
+            ) {
                 throw new Error('Developers can only update task status');
             }
             // Devs can only update their own tasks
@@ -265,7 +289,67 @@ export const TaskService = {
             updateData.projectId = data.projectId || null;
         }
         if (data.recurrenceType !== undefined) updateData.recurrenceType = data.recurrenceType;
+        if (data.cadence !== undefined) updateData.cadence = data.cadence;
         if (data.orderIndex !== undefined) updateData.orderIndex = data.orderIndex;
+        if (data.timeEstimateMins !== undefined) updateData.timeEstimateMins = data.timeEstimateMins;
+        if (data.starsAwarded !== undefined && actorRole === Role.ADMIN && !task.starsAwarded) {
+            updateData.starsAwarded = data.starsAwarded;
+            updateData.approvedById = actorId;
+            updateData.completedAt = updateData.status === 'DONE' ? new Date() : task.completedAt;
+        }
+
+        if (updateData.starsAwarded && task.assigneeId) {
+            return await prisma.$transaction(async (tx) => {
+                const updatedTask = await tx.task.update({
+                    where: { id },
+                    data: updateData,
+                    include: {
+                        assignee: { select: { id: true, name: true, email: true } },
+                        project: { select: { id: true, name: true, priority: true } },
+                    },
+                });
+
+                const user = await tx.user.findUnique({
+                    where: { id: task.assigneeId as string },
+                    select: { starsBalance: true, bonusesBalance: true },
+                });
+
+                const previousStars = user?.starsBalance ?? 0;
+                const newStars = previousStars + (updateData.starsAwarded as number);
+                const previousBonuses = Math.floor(previousStars / 3);
+                const newBonuses = Math.floor(newStars / 3);
+                const bonusesToAdd = Math.max(0, newBonuses - previousBonuses);
+
+                await tx.user.update({
+                    where: { id: task.assigneeId as string },
+                    data: {
+                        starsBalance: newStars,
+                        bonusesBalance: (user?.bonusesBalance ?? 0) + bonusesToAdd,
+                    },
+                });
+
+                await tx.starTransaction.create({
+                    data: {
+                        userId: task.assigneeId as string,
+                        taskId: task.id,
+                        stars: updateData.starsAwarded as number,
+                        reason: 'Task approval',
+                    },
+                });
+
+                if (bonusesToAdd > 0) {
+                    await tx.bonus.createMany({
+                        data: Array.from({ length: bonusesToAdd }).map(() => ({
+                            userId: task.assigneeId as string,
+                            type: 'AUTO',
+                            status: 'ACTIVE',
+                        })),
+                    });
+                }
+
+                return updatedTask;
+            });
+        }
 
         return await prisma.task.update({
             where: { id },

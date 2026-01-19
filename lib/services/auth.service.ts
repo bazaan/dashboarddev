@@ -51,6 +51,7 @@ export const AuthService = {
                     error.message.includes('P1001') ||
                     error.message.includes('P1000') ||
                     error.message.includes('P1017')) {
+                    error.message.includes('P1001')) {
                     throw new Error('Error de conexión a la base de datos. Verifica DATABASE_URL en las variables de entorno.');
                 }
                 // Re-lanzar errores conocidos (como credenciales inválidas)

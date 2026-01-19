@@ -8,30 +8,52 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TaskCard } from './TaskCard';
 import { cn } from '@/lib/utils';
+import { Select } from '@/components/ui/select';
 
 type Task = {
     id: string;
     title: string;
     description?: string;
-    status: 'PENDING' | 'IN_PROGRESS' | 'DONE';
+    status: 'NOT_STARTED' | 'PENDING' | 'IN_PROGRESS' | 'DONE';
     priority: 'HIGH' | 'MEDIUM' | 'LOW';
     deadline?: string;
+    cadence?: 'DAILY' | 'WEEKLY';
     recurrenceType?: 'NONE' | 'DAILY' | 'WEEKLY';
-    assignee?: { name: string };
+    assigneeId?: string | null;
+    assignee?: { name: string; email?: string | null };
     project?: { id: string; name: string; priority: string };
+};
+
+type UserOption = {
+    id: string;
+    name?: string | null;
+    email: string;
 };
 
 export function DailyWeeklyTasks() {
     const [view, setView] = useState<'daily' | 'weekly'>('daily');
     const [selectedDate, setSelectedDate] = useState(new Date());
+    const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
+
+    const { data: users } = useQuery<UserOption[]>({
+        queryKey: ['users'],
+        queryFn: async () => {
+            const res = await fetch('/api/users');
+            if (!res.ok) throw new Error('Failed to fetch users');
+            return res.json();
+        },
+    });
 
     const { data: tasks, isLoading } = useQuery<Task[]>({
-        queryKey: ['tasks', view, format(selectedDate, 'yyyy-MM-dd')],
+        queryKey: ['tasks', view, format(selectedDate, 'yyyy-MM-dd'), assigneeFilter],
         queryFn: async () => {
             const params = new URLSearchParams({
                 type: view,
                 date: format(selectedDate, 'yyyy-MM-dd'),
             });
+            if (assigneeFilter !== 'all') {
+                params.set('assigneeId', assigneeFilter);
+            }
             const res = await fetch(`/api/tasks?${params.toString()}`);
             if (!res.ok) throw new Error('Failed to fetch tasks');
             return res.json();
@@ -58,6 +80,11 @@ export function DailyWeeklyTasks() {
     const getTasksForDay = (day: Date) => {
         if (!tasks) return [];
         return tasks.filter((task) => {
+            if (task.cadence === 'DAILY') return true;
+            if (task.cadence === 'WEEKLY' && task.deadline) {
+                const taskDate = new Date(task.deadline);
+                return taskDate.toDateString() === day.toDateString();
+            }
             if (task.recurrenceType === 'DAILY') return true;
             if (task.recurrenceType === 'WEEKLY' && task.deadline) {
                 const taskDate = new Date(task.deadline);
@@ -119,12 +146,23 @@ export function DailyWeeklyTasks() {
                         </Button>
                     </div>
                 </div>
+                <div className="w-64">
+                    <Select value={assigneeFilter} onChange={(event) => setAssigneeFilter(event.target.value)}>
+                        <option value="all">Todas las tareas</option>
+                        <option value="me">Mis tareas</option>
+                        {(users || []).map((user) => (
+                            <option key={user.id} value={user.id}>
+                                {user.name || user.email}
+                            </option>
+                        ))}
+                    </Select>
+                </div>
             </div>
 
             {/* Vista de tareas */}
             {view === 'daily' ? (
                 <div className="space-y-4">
-                    <div className="bg-white rounded-lg border border-slate-200 p-4">
+                    <div className="alef-card p-4">
                         <h3 className="text-lg font-semibold mb-4">
                             {format(selectedDate, 'EEEE, d MMMM yyyy')}
                             {isToday(selectedDate) && (
@@ -154,7 +192,7 @@ export function DailyWeeklyTasks() {
                             <div
                                 key={idx}
                                 className={cn(
-                                    'bg-white rounded-lg border border-slate-200 p-3 min-h-[300px]',
+                                    'bg-white/95 rounded-lg border border-blue-100 p-3 min-h-[300px] shadow-sm shadow-blue-100/40',
                                     isCurrentDay && 'border-blue-500 border-2'
                                 )}
                             >

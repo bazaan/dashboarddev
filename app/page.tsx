@@ -1,6 +1,13 @@
 import { redirect } from 'next/navigation';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export default async function Home() {
-  // Redirigir directamente al dashboard sin autenticación
-  redirect('/dashboard');
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.auth.getUser();
+  if (data.user) {
+    redirect('/dashboard');
+  }
+
+  // Usuario no autenticado, redirigir al login
+  redirect('/login');
 }
